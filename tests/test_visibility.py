@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from gsd.visibility import build_rwanda_sector_visibility_table
+from gsd.visibility import build_rwanda_district_visibility_table, build_rwanda_sector_visibility_table
 
 
 def _visibility_dataset() -> pd.DataFrame:
@@ -45,6 +45,27 @@ def test_build_rwanda_sector_visibility_table_returns_scores() -> None:
     assert "visibility_score" in visibility.columns
     assert summary["trusted_groups"] >= 1
     assert summary["feature_count_total"] >= 1
+
+
+def test_build_rwanda_district_visibility_table_returns_scores() -> None:
+    dataframe = _visibility_dataset().drop(columns=["sector"])
+
+    visibility, summary = build_rwanda_district_visibility_table(
+        dataframe,
+        gender_column="gender",
+        women_values={"female", "woman", "women"},
+        province_column="province",
+        district_column="district",
+        min_women_count=10,
+        min_feature_count=3,
+        trust_threshold=0.65,
+    )
+
+    assert not visibility.empty
+    assert "trust_score" in visibility.columns
+    assert "visibility_score" in visibility.columns
+    assert "sector" not in visibility.columns
+    assert summary["analysis_level"] == "district"
 
 
 def test_build_rwanda_sector_visibility_table_raises_for_missing_women_rows() -> None:

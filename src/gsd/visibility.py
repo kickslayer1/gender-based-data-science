@@ -13,7 +13,7 @@ def _resolve_location_columns(
     *,
     province_column: str | None,
     district_column: str | None,
-    sector_column: str,
+    sector_column: str | None,
 ) -> list[str]:
     columns = [column for column in [province_column, district_column, sector_column] if column]
     if not columns:
@@ -32,12 +32,12 @@ def _default_feature_columns(
     return features
 
 
-def build_rwanda_sector_visibility_table(
+def build_rwanda_visibility_table(
     dataframe: pd.DataFrame,
     *,
     gender_column: str,
     women_values: set[str],
-    sector_column: str,
+    sector_column: str | None = None,
     district_column: str | None = None,
     province_column: str | None = None,
     feature_columns: list[str] | None = None,
@@ -171,4 +171,70 @@ def build_rwanda_sector_visibility_table(
         "mean_trust_score": float(visibility["trust_score"].mean()),
     }
 
+    if sector_column:
+        summary["analysis_level"] = "sector"
+    elif district_column:
+        summary["analysis_level"] = "district"
+    elif province_column:
+        summary["analysis_level"] = "province"
+    else:
+        summary["analysis_level"] = "custom"
+
     return visibility, summary
+
+
+def build_rwanda_district_visibility_table(
+    dataframe: pd.DataFrame,
+    *,
+    gender_column: str,
+    women_values: set[str],
+    district_column: str,
+    province_column: str | None = None,
+    feature_columns: list[str] | None = None,
+    target_column: str | None = None,
+    min_women_count: int = 30,
+    min_feature_count: int = 8,
+    trust_threshold: float = 0.70,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    return build_rwanda_visibility_table(
+        dataframe,
+        gender_column=gender_column,
+        women_values=women_values,
+        province_column=province_column,
+        district_column=district_column,
+        sector_column=None,
+        feature_columns=feature_columns,
+        target_column=target_column,
+        min_women_count=min_women_count,
+        min_feature_count=min_feature_count,
+        trust_threshold=trust_threshold,
+    )
+
+
+def build_rwanda_sector_visibility_table(
+    dataframe: pd.DataFrame,
+    *,
+    gender_column: str,
+    women_values: set[str],
+    sector_column: str,
+    district_column: str | None = None,
+    province_column: str | None = None,
+    feature_columns: list[str] | None = None,
+    target_column: str | None = None,
+    min_women_count: int = 30,
+    min_feature_count: int = 8,
+    trust_threshold: float = 0.70,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    return build_rwanda_visibility_table(
+        dataframe,
+        gender_column=gender_column,
+        women_values=women_values,
+        sector_column=sector_column,
+        district_column=district_column,
+        province_column=province_column,
+        feature_columns=feature_columns,
+        target_column=target_column,
+        min_women_count=min_women_count,
+        min_feature_count=min_feature_count,
+        trust_threshold=trust_threshold,
+    )

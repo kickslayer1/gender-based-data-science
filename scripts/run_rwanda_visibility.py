@@ -11,7 +11,7 @@ if str(SRC_DIR) not in sys.path:
 
 from gsd.data import load_csv, load_data_folder, load_dta, load_sav, merge_tables_on_keys
 from gsd.opportunity import parse_women_values
-from gsd.visibility import build_rwanda_sector_visibility_table
+from gsd.visibility import build_rwanda_visibility_table
 
 
 def _parse_csv_list(value: str | None) -> list[str]:
@@ -57,7 +57,7 @@ def _load_input_data(args: argparse.Namespace):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Build a Rwanda sector-level women data visibility table with trust metrics "
+            "Build a Rwanda women data visibility table (district or sector level) with trust metrics "
             "based on feature count, feature coverage, and sample support."
         )
     )
@@ -88,6 +88,12 @@ def parse_args() -> argparse.Namespace:
         help="Join mode for multi-table merge.",
     )
     parser.add_argument(
+        "--analysis-level",
+        default="sector",
+        choices=["sector", "district"],
+        help="Location granularity for reporting. Use district when sector data is unavailable.",
+    )
+    parser.add_argument(
         "--gender-column",
         default="gender",
         help="Gender column name.",
@@ -110,7 +116,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sector-column",
         default="sector",
-        help="Sector column name.",
+        help="Sector column name (required when --analysis-level sector).",
     )
     parser.add_argument(
         "--feature-columns",
@@ -171,12 +177,13 @@ def main() -> None:
     dataframe = _load_input_data(args)
     women_values = parse_women_values(args.women_values)
     feature_columns = _parse_csv_list(args.feature_columns) if args.feature_columns else None
+    sector_column = args.sector_column if args.analysis_level == "sector" else None
 
-    visibility, summary = build_rwanda_sector_visibility_table(
+    visibility, summary = build_rwanda_visibility_table(
         dataframe,
         gender_column=args.gender_column,
         women_values=women_values,
-        sector_column=args.sector_column,
+        sector_column=sector_column,
         district_column=args.district_column,
         province_column=args.province_column,
         feature_columns=feature_columns,
@@ -189,11 +196,19 @@ def main() -> None:
     if args.trusted_only:
         visibility = visibility[visibility["trusted"]].copy()
 
-    output_csv = Path(args.output_csv)
+    output_csv_path = args.output_csv
+    output_json_path = args.output_json
+    if args.analysis_level == "district":
+        if output_csv_path == "data/processed/rwanda_sector_visibility.csv":
+            output_csv_path = "data/processed/rwanda_district_visibility.csv"
+        if output_json_path == "data/processed/rwanda_sector_visibility_summary.json":
+            output_json_path = "data/processed/rwanda_district_visibility_summary.json"
+
+    output_csv = Path(output_csv_path)
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     visibility.to_csv(output_csv, index=False)
 
-    output_json = Path(args.output_json)
+    output_json = Path(output_json_path)
     output_json.parent.mkdir(parents=True, exist_ok=True)
 
     top_preview = visibility.head(max(args.top_n, 0)).where(visibility.notna(), None).to_dict("records")
@@ -206,7 +221,7 @@ def main() -> None:
     }
     output_json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-    print("Rwanda sector visibility processing complete.")
+    print(f"Rwanda {args.analysis_level} visibility processing complete.")
     print(f"Visibility table written to: {output_csv}")
     print(f"Summary written to: {output_json}")
     print(f"Rows in output: {len(visibility)}")
