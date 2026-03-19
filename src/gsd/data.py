@@ -15,17 +15,23 @@ def load_csv(data_path: str | Path) -> pd.DataFrame:
     return dataframe
 
 
+def validate_columns_exist(
+    dataframe: pd.DataFrame,
+    required_columns: list[str],
+) -> None:
+    missing_columns = [column for column in required_columns if column not in dataframe.columns]
+    if missing_columns:
+        joined = ", ".join(missing_columns)
+        raise ValueError(f"Missing required columns: {joined}")
+
+
 def validate_required_columns(
     dataframe: pd.DataFrame,
     *,
     gender_column: str,
     target_column: str,
 ) -> None:
-    missing_columns = [
-        column
-        for column in (gender_column, target_column)
-        if column not in dataframe.columns
-    ]
-    if missing_columns:
-        joined = ", ".join(missing_columns)
-        raise ValueError(f"Missing required columns: {joined}")
+    validate_columns_exist(
+        dataframe,
+        required_columns=[gender_column, target_column],
+    )

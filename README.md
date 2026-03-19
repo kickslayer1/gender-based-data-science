@@ -7,6 +7,8 @@ This repository is a starter template for a data science project focused on gend
 - Load and validate tabular data with a gender column and target column.
 - Train a baseline classification model.
 - Report model quality overall and split by gender groups.
+- Analyze women-centered trend patterns across key segments.
+- Build a predictive opportunity map to rank high-potential segments.
 - Keep data, notebooks, scripts, and source code organized for reproducible work.
 
 ## Repository Layout
@@ -37,12 +39,43 @@ This repository is a starter template for a data science project focused on gend
 
    - `data/processed/baseline_metrics.json`
 
+## Women-Centered Opportunity Map Workflow
+
+Use the opportunity-map script after adding your richer dataset to `data/raw/`.
+
+Example command:
+
+```bash
+python scripts/run_opportunity_map.py \
+   --data-path data/raw/your_dataset.csv \
+   --target-column outcome \
+   --gender-column gender \
+   --segment-columns region,industry \
+   --time-column event_date \
+   --women-values female,woman,women \
+   --min-group-size 30
+```
+
+Outputs:
+
+- `data/processed/opportunity_map.csv`: ranked segment-level opportunity table
+- `data/processed/opportunity_summary.json`: run metadata and top-segment preview
+
+Main ranking features include:
+
+- women positive outcome rate by segment
+- predicted propensity for women in each segment
+- opportunity gap (`predicted_positive_rate - women_positive_rate`)
+- optional yearly trend slope when `--time-column` is provided
+
 ## Expected Data Requirements
 
 The baseline script expects a CSV with:
 
 - one target column (binary or multiclass)
 - one gender column used for subgroup reporting
+- one or more segment columns used to define opportunity map groups
+- optional timestamp/date column to detect direction of trend over time
 - any number of additional feature columns
 
 ## Notes
