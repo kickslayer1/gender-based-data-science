@@ -9,6 +9,8 @@ This repository is a starter template for a data science project focused on gend
 - Report model quality overall and split by gender groups.
 - Analyze women-centered trend patterns across key segments.
 - Build a predictive opportunity map to rank high-potential segments.
+- Publish Rwanda women-centered visibility outputs down to sector level.
+- Add trust scoring that emphasizes feature count and feature coverage quality.
 - Keep data, notebooks, scripts, and source code organized for reproducible work.
 
 ## Repository Layout
@@ -68,6 +70,45 @@ Main ranking features include:
 - opportunity gap (`predicted_positive_rate - women_positive_rate`)
 - optional yearly trend slope when `--time-column` is provided
 
+## Rwanda Sector Visibility Workflow
+
+This workflow is designed for multi-table ingestion and sector-level reporting.
+
+If you have one prepared table:
+
+```bash
+python scripts/run_rwanda_visibility.py \
+   --data-path data/raw/your_dataset.csv \
+   --gender-column gender \
+   --province-column province \
+   --district-column district \
+   --sector-column sector
+```
+
+If you have multiple source tables:
+
+```bash
+python scripts/run_rwanda_visibility.py \
+   --tables-folder data/raw \
+   --join-keys household_id,person_id \
+   --base-table household_master \
+   --gender-column gender \
+   --province-column province \
+   --district-column district \
+   --sector-column sector
+```
+
+Outputs:
+
+- `data/processed/rwanda_sector_visibility.csv`: location-level visibility and trust table
+- `data/processed/rwanda_sector_visibility_summary.json`: metadata and top rows
+
+Trust scoring in this workflow combines:
+
+- feature coverage ratio (weighted highest)
+- feature count trust against a minimum-feature threshold
+- sample trust based on women row volume in each location group
+
 ## Expected Data Requirements
 
 The baseline script expects a CSV with:
@@ -75,6 +116,7 @@ The baseline script expects a CSV with:
 - one target column (binary or multiclass)
 - one gender column used for subgroup reporting
 - one or more segment columns used to define opportunity map groups
+- Rwanda administrative columns for visibility output (`province`, `district`, `sector` by default)
 - optional timestamp/date column to detect direction of trend over time
 - any number of additional feature columns
 
