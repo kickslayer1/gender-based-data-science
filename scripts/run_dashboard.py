@@ -170,6 +170,91 @@ def _format_metric_value(metric: str, value: object) -> str:
     return f"{float(value):.3f}"
 
 
+def _clamp_to_unit_interval(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _interpolate_rgb_color(start_rgb: tuple[int, int, int], end_rgb: tuple[int, int, int], ratio: float) -> str:
+    ratio = _clamp_to_unit_interval(ratio)
+    red = int(round(start_rgb[0] + (end_rgb[0] - start_rgb[0]) * ratio))
+    green = int(round(start_rgb[1] + (end_rgb[1] - start_rgb[1]) * ratio))
+    blue = int(round(start_rgb[2] + (end_rgb[2] - start_rgb[2]) * ratio))
+    return f"#{red:02x}{green:02x}{blue:02x}"
+
+
+def _district_metric_rectangle_color(
+    value: object,
+    *,
+    min_value: float,
+    max_value: float,
+    low_is_risk: bool,
+) -> str:
+    if pd.isna(value) or pd.isna(min_value) or pd.isna(max_value):
+        return "#9ca3af"
+
+    if max_value <= min_value:
+        ratio = 0.5
+    else:
+        ratio = (float(value) - float(min_value)) / (float(max_value) - float(min_value))
+    ratio = _clamp_to_unit_interval(ratio)
+
+    # Lighter, brighter palette for subtle underline accents.
+    red = (255, 133, 151)
+    green = (118, 222, 167)
+    if low_is_risk:
+        return _interpolate_rgb_color(red, green, ratio)
+    return _interpolate_rgb_color(green, red, ratio)
+
+
+def _render_metric_underline(
+    metric_name: str,
+    value: object,
+    baseline_df: pd.DataFrame,
+    *,
+    low_is_risk: bool,
+) -> None:
+    if metric_name not in baseline_df.columns:
+        return
+
+    metric_series = pd.to_numeric(baseline_df[metric_name], errors="coerce")
+    min_value = metric_series.min(skipna=True)
+    max_value = metric_series.max(skipna=True)
+    metric_color = _district_metric_rectangle_color(
+        value,
+        min_value=float(min_value) if pd.notna(min_value) else float("nan"),
+        max_value=float(max_value) if pd.notna(max_value) else float("nan"),
+        low_is_risk=low_is_risk,
+    )
+
+    st.markdown(
+        (
+            f"<div style='margin-top:-14px;margin-bottom:2px;height:4px;"
+            f"border-radius:4px;background:{metric_color};'></div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def _render_metric_underline_legend() -> None:
+    st.markdown(
+        (
+            "<div style='border:1px solid #e5e7eb;border-radius:10px;padding:10px 8px;background:#ffffff;'>"
+            "<div style='font-size:0.70rem;color:#6b7280;font-weight:600;margin-bottom:6px;'>Legend</div>"
+            "<div style='display:flex;align-items:stretch;gap:8px;'>"
+            "<div style='width:10px;height:88px;border-radius:6px;"
+            "background:linear-gradient(to bottom,#ff8597 0%,#76dea7 100%);'></div>"
+            "<div style='display:flex;flex-direction:column;justify-content:space-between;"
+            "font-size:0.68rem;color:#6b7280;line-height:1.2;'>"
+            "<span>higher concern</span>"
+            "<span>lower concern</span>"
+            "</div>"
+            "</div>"
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
 def _render_sorted_metric_bar_chart(
     dataframe: pd.DataFrame,
     *,
@@ -874,23 +959,51 @@ def _render_district_report_view(baseline_df: pd.DataFrame) -> None:
     callout_kind, callout_message = _district_priority_callout(district_row)
     getattr(st, callout_kind)(callout_message)
 
-    top1, top2, top3, top4 = st.columns(4)
-    top1.metric("Province", str(district_row.get("province_name", "n/a")))
-    top2.metric("DHS rank", _format_metric_value("opportunity_rank", district_row.get("opportunity_rank")))
-    top3.metric("CFSVA rank", _format_metric_value("priority_rank", district_row.get("priority_rank")))
-    top4.metric("Policy score", _format_metric_value("policy_priority_score", district_row.get("policy_priority_score")))
+    metrics_col, legend_col = st.columns([6, 1])
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Women poverty rate", _format_metric_value("women_positive_rate", district_row.get("women_positive_rate")))
-    m2.metric("Women no-education", _format_metric_value("no_edu_rate", district_row.get("no_edu_rate")))
-    m3.metric("Food insecurity", _format_metric_value("fi_modsev_rate", district_row.get("fi_modsev_rate")))
-    m4.metric("Stunting", _format_metric_value("stunting_rate", district_row.get("stunting_rate")))
+    with metrics_col:
+        top1, top2, top3, top4 = st.columns(4)
+        with top1:
+            st.metric("Province", str(district_row.get("province_name", "n/a")))
+        with top2:
+            dhs_rank = district_row.get("opportunity_rank")
+            st.metric("DHS rank", _format_metric_value("opportunity_rank", dhs_rank))
+            _render_metric_underline("opportunity_rank", dhs_rank, baseline_df, low_is_risk=True)
+        with top3:
+            cfsva_rank = district_row.get("priority_rank")
+            st.metric("CFSVA rank", _format_metric_value("priority_rank", cfsva_rank))
+            _render_metric_underline("priority_rank", cfsva_rank, baseline_df, low_is_risk=True)
+        with top4:
+            policy_score = district_row.get("policy_priority_score")
+            st.metric("Policy score", _format_metric_value("policy_priority_score", policy_score))
+            _render_metric_underline("policy_priority_score", policy_score, baseline_df, low_is_risk=False)
 
-    m5, m6, m7, m8 = st.columns(4)
-    m5.metric("Women 15-49", _format_metric_value("n_women_15_49", district_row.get("n_women_15_49")))
-    m6.metric("Mothers covered", _format_metric_value("n_mothers", district_row.get("n_mothers")))
-    m7.metric("Children covered", _format_metric_value("n_children", district_row.get("n_children")))
-    m8.metric("Rural share", _format_metric_value("rural_share", district_row.get("rural_share")))
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            women_poverty_rate = district_row.get("women_positive_rate")
+            st.metric("Women poverty rate", _format_metric_value("women_positive_rate", women_poverty_rate))
+            _render_metric_underline("women_positive_rate", women_poverty_rate, baseline_df, low_is_risk=False)
+        with m2:
+            women_no_edu_rate = district_row.get("no_edu_rate")
+            st.metric("Women no-education", _format_metric_value("no_edu_rate", women_no_edu_rate))
+            _render_metric_underline("no_edu_rate", women_no_edu_rate, baseline_df, low_is_risk=False)
+        with m3:
+            food_insecurity_rate = district_row.get("fi_modsev_rate")
+            st.metric("Food insecurity", _format_metric_value("fi_modsev_rate", food_insecurity_rate))
+            _render_metric_underline("fi_modsev_rate", food_insecurity_rate, baseline_df, low_is_risk=False)
+        with m4:
+            stunting_rate = district_row.get("stunting_rate")
+            st.metric("Stunting", _format_metric_value("stunting_rate", stunting_rate))
+            _render_metric_underline("stunting_rate", stunting_rate, baseline_df, low_is_risk=False)
+
+        m5, m6, m7, m8 = st.columns(4)
+        m5.metric("Women 15-49", _format_metric_value("n_women_15_49", district_row.get("n_women_15_49")))
+        m6.metric("Mothers covered", _format_metric_value("n_mothers", district_row.get("n_mothers")))
+        m7.metric("Children covered", _format_metric_value("n_children", district_row.get("n_children")))
+        m8.metric("Rural share", _format_metric_value("rural_share", district_row.get("rural_share")))
+
+    with legend_col:
+        _render_metric_underline_legend()
 
     st.subheader("Recommended CSO actions")
     for action in _generate_cso_actions(district_row):
