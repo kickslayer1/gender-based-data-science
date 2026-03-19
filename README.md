@@ -137,6 +137,28 @@ The baseline script expects a CSV with:
 - optional timestamp/date column to detect direction of trend over time
 - any number of additional feature columns
 
+## Dashboard Workflow
+
+Run the Streamlit dashboard with:
+
+```bash
+streamlit run scripts/run_dashboard.py
+```
+
+The dashboard now includes four views:
+
+- DHS opportunity view for district-level women opportunity targeting
+- CFSVA nutrition and food-security priority view
+- district one-click report for any of the 30 Rwanda districts
+- data donation merge view for local CSO CSV or XLSX uploads
+
+Data donation expectations:
+
+- one district column that matches Rwanda district names, or close text labels such as `district_name`
+- one or more numeric survey indicators to aggregate by district
+- CSV and XLSX uploads are supported
+- uploaded data is merged into the current session baseline and can be pulled into the district one-click report
+
 ## Notes
 
 - No dataset is included in this template.

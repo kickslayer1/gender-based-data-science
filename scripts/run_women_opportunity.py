@@ -55,7 +55,7 @@ DISTRICT_LABELS = {
     21: "Nyanza", 22: "Gisagara", 23: "Nyaruguru", 24: "Huye", 25: "Nyamagabe",
     26: "Ruhango", 27: "Muhanga", 28: "Kamonyi",
     31: "Karongi", 32: "Rutsiro", 33: "Rubavu", 34: "Nyabihu",
-    35: "Ngororero", 36: "Cibitoke", 37: "Rusizi", 38: "Nyamasheke",
+    35: "Ngororero", 36: "Nyamasheke", 37: "Rusizi",
     41: "Rulindo", 42: "Gakenke", 43: "Musanze", 44: "Burera", 45: "Gicumbi",
     51: "Rwamagana", 52: "Nyagatare", 53: "Gatsibo", 54: "Kayonza",
     55: "Kirehe", 56: "Ngoma", 57: "Bugesera",
