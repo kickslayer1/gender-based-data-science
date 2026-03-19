@@ -4,6 +4,8 @@ import pytest
 from gsd.data import (
     load_csv_folder,
     load_data_folder,
+    load_dta,
+    load_dta_folder,
     load_sav,
     load_sav_folder,
     merge_tables_on_keys,
@@ -150,4 +152,48 @@ def test_load_data_folder_handles_mixed_formats(tmp_path) -> None:
     assert "sectors" in loaded
     assert loaded["demo"].shape[0] == 2
     assert loaded["sectors"].shape[0] == 2
+
+
+# ---------------------------------------------------------------------------
+# DTA / Stata loading tests
+# ---------------------------------------------------------------------------
+
+def test_load_dta_reads_file(tmp_path) -> None:
+    dta_path = tmp_path / "sample.dta"
+    df = pd.DataFrame({"id": [1, 2], "province": ["Kigali", "East"], "target": [1, 0]})
+    df.to_stata(str(dta_path), write_index=False)
+
+    result = load_dta(dta_path, convert_categoricals=False)
+
+    assert result.shape[0] == 2
+    assert "province" in result.columns
+
+
+def test_load_dta_raises_for_missing_file(tmp_path) -> None:
+    import pytest
+
+    with pytest.raises(FileNotFoundError, match="DTA file not found"):
+        load_dta(tmp_path / "does_not_exist.dta")
+
+
+def test_load_dta_folder_reads_multiple_files(tmp_path) -> None:
+    df_a = pd.DataFrame({"id": [1, 2], "district": ["Gasabo", "Kicukiro"]})
+    df_b = pd.DataFrame({"id": [3, 4], "district": ["Huye", "Ruhango"]})
+    df_a.to_stata(str(tmp_path / "wave1.dta"), write_index=False)
+    df_b.to_stata(str(tmp_path / "wave2.dta"), write_index=False)
+
+    loaded = load_dta_folder(tmp_path, convert_categoricals=False)
+
+    assert set(loaded.keys()) == {"wave1", "wave2"}
+    assert loaded["wave1"].shape[0] == 2
+
+
+def test_load_data_folder_handles_dta_files(tmp_path) -> None:
+    df = pd.DataFrame({"id": [1, 2], "gender": ["F", "M"]})
+    df.to_stata(str(tmp_path / "roster.dta"), write_index=False)
+
+    loaded = load_data_folder(tmp_path, convert_categoricals=False)
+
+    assert "roster" in loaded
+    assert loaded["roster"].shape[0] == 2
 

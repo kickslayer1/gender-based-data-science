@@ -9,7 +9,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from gsd.data import load_csv, load_data_folder, load_sav, merge_tables_on_keys
+from gsd.data import load_csv, load_data_folder, load_dta, load_sav, merge_tables_on_keys
 from gsd.opportunity import parse_women_values
 from gsd.visibility import build_rwanda_sector_visibility_table
 
@@ -26,8 +26,11 @@ def _load_input_data(args: argparse.Namespace):
 
     if args.data_path:
         path = Path(args.data_path)
-        if path.suffix.lower() == ".sav":
+        suffix = path.suffix.lower()
+        if suffix == ".sav":
             return load_sav(path)
+        if suffix == ".dta":
+            return load_dta(path)
         return load_csv(path)
 
     if args.tables_folder:
@@ -61,12 +64,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-path",
         default=None,
-        help="Path to a single prepared CSV or SAV file.",
+        help="Path to a single prepared CSV, SAV, or DTA file.",
     )
     parser.add_argument(
         "--tables-folder",
         default=None,
-        help="Folder containing CSV and/or SAV tables to merge before visibility analysis.",
+        help="Folder containing CSV, SAV, and/or DTA tables to merge before visibility analysis.",
     )
     parser.add_argument(
         "--join-keys",

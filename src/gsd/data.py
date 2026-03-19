@@ -61,41 +61,105 @@ def load_sav_folder(
     return loaded
 
 
+def load_dta(data_path: str | Path, *, convert_categoricals: bool = True) -> pd.DataFrame:
+    """Load a Stata .dta file into a DataFrame.
+
+    Parameters
+    ----------
+    data_path:
+        Path to the .dta file.
+    convert_categoricals:
+        When True (default) Stata value labels are decoded to strings instead
+        of raw numeric codes.
+    """
+    path = Path(data_path)
+    if not path.exists():
+        raise FileNotFoundError(f"DTA file not found: {path}")
+
+    dataframe = pd.read_stata(path, convert_categoricals=convert_categoricals)
+    if dataframe.empty:
+        raise ValueError("Input DTA file is empty.")
+
+    return dataframe
+
+
+def load_dta_folder(
+    folder_path: str | Path,
+    *,
+    convert_categoricals: bool = True,
+) -> dict[str, pd.DataFrame]:
+    """Load every .dta file in a folder as a named DataFrame.
+
+    Parameters
+    ----------
+    folder_path:
+        Directory that contains the .dta files.
+    convert_categoricals:
+        Passed through to :func:`load_dta` for each file.
+    """
+    folder = Path(folder_path)
+    if not folder.exists() or not folder.is_dir():
+        raise FileNotFoundError(f"DTA folder not found: {folder}")
+
+    dta_files = sorted(folder.glob("*.dta"))
+    if not dta_files:
+        raise ValueError(f"No DTA files found in folder: {folder}")
+
+    loaded: dict[str, pd.DataFrame] = {}
+    for file_path in dta_files:
+        frame = pd.read_stata(file_path, convert_categoricals=convert_categoricals)
+        if frame.empty:
+            continue
+        loaded[file_path.stem] = frame
+
+    if not loaded:
+        raise ValueError("All DTA files in folder were empty.")
+
+    return loaded
+
+
 def load_data_folder(
     folder_path: str | Path,
     *,
     convert_categoricals: bool = True,
 ) -> dict[str, pd.DataFrame]:
-    """Load all .csv and/or .sav files from a folder into named DataFrames.
+    """Load all .csv, .sav, and/or .dta files from a folder into named DataFrames.
 
-    File stems are used as dictionary keys.  When a stem appears in both
-    formats the CSV takes precedence and the .sav file is skipped.
+    File stems are used as dictionary keys.  Priority order when the same stem
+    appears in multiple formats: CSV > SAV > DTA.
 
     Parameters
     ----------
     folder_path:
         Directory containing the data files.
     convert_categoricals:
-        Passed through when loading .sav files.
+        Passed through when loading .sav and .dta files.
     """
     folder = Path(folder_path)
     if not folder.exists() or not folder.is_dir():
         raise FileNotFoundError(f"Data folder not found: {folder}")
 
-    # Collect CSV first so they take precedence over same-stem SAV files
-    all_files = sorted(folder.glob("*.csv")) + sorted(folder.glob("*.sav"))
+    # Priority: CSV > SAV > DTA — first match for a stem wins
+    all_files = (
+        sorted(folder.glob("*.csv"))
+        + sorted(folder.glob("*.sav"))
+        + sorted(folder.glob("*.dta"))
+    )
     if not all_files:
-        raise ValueError(f"No CSV or SAV files found in folder: {folder}")
+        raise ValueError(f"No CSV, SAV, or DTA files found in folder: {folder}")
 
     loaded: dict[str, pd.DataFrame] = {}
     for file_path in all_files:
         stem = file_path.stem
         if stem in loaded:
-            continue  # CSV already loaded for this stem
-        if file_path.suffix.lower() == ".csv":
+            continue
+        suffix = file_path.suffix.lower()
+        if suffix == ".csv":
             frame = pd.read_csv(file_path)
-        else:
+        elif suffix == ".sav":
             frame = pd.read_spss(file_path, convert_categoricals=convert_categoricals)
+        else:  # .dta
+            frame = pd.read_stata(file_path, convert_categoricals=convert_categoricals)
         if frame.empty:
             continue
         loaded[stem] = frame
