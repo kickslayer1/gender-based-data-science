@@ -1,165 +1,93 @@
-# Gender-Based Data Science Project
+# Rwanda Women Policy Intelligence
 
-This repository is a starter template for a data science project focused on gender-based analysis.
+District-level data science for women-centered policy action in Rwanda.
 
-## Project Goals
+This project helps civil society organizations and policy teams answer one core question: **where should we act first, and why?**
 
-- Load and validate tabular data with a gender column and target column.
-- Train a baseline classification model.
-- Report model quality overall and split by gender groups.
-- Analyze women-centered trend patterns across key segments.
-- Build a predictive opportunity map to rank high-potential segments.
-- Publish Rwanda women-centered visibility outputs down to sector level.
-- Add trust scoring that emphasizes feature count and feature coverage quality.
-- Keep data, notebooks, scripts, and source code organized for reproducible work.
+## Why This Matters
 
-## Repository Layout
+- Combines DHS and CFSVA evidence into one district view
+- Surfaces high-priority districts with transparent metrics
+- Turns analytics into action-ready summaries for decision-makers
+- Allows local CSOs to merge field survey data with national baselines
 
-- `data/raw/`: source datasets (not committed by default)
-- `data/processed/`: generated outputs and metrics
-- `notebooks/`: exploratory analysis notebooks
-- `scripts/`: runnable entrypoints
-- `src/gsd/`: reusable project code
-- `tests/`: tests for project utilities
+## What You Get
+
+### 1. DHS Opportunity Mapping
+
+- Builds a district opportunity ranking for women aged 15-49
+- Captures poverty pressure, education gaps, and rural exposure
+
+### 2. CFSVA Nutrition and Food Security Prioritization
+
+- Produces district policy-priority scores from mother and child indicators
+- Highlights hotspots for nutrition and food-security intervention
+
+### 3. One-Click District Briefs
+
+- Instant district-level summaries with key metrics and recommended CSO actions
+- Exportable as Markdown and CSV
+
+### 4. Data Donation Merge
+
+- Upload local CSO CSV/XLSX data
+- Standardize district names
+- Merge local findings with baseline district evidence
 
 ## Quick Start
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Run baseline training with your CSV:
-
-   ```bash
-   python scripts/run_baseline.py --data-path data/raw/your_dataset.csv --target-column outcome --gender-column gender
-   ```
-
-4. Metrics are written to:
-
-   - `data/processed/baseline_metrics.json`
-
-## Women-Centered Opportunity Map Workflow
-
-Use the opportunity-map script after adding your richer dataset to `data/raw/`.
-
-Example command:
+1. Create and activate a virtual environment
+2. Install dependencies
 
 ```bash
-python scripts/run_opportunity_map.py \
-   --data-path data/raw/your_dataset.csv \
-   --target-column outcome \
-   --gender-column gender \
-   --segment-columns region,industry \
-   --time-column event_date \
-   --women-values female,woman,women \
-   --min-group-size 30
+pip install -r requirements.txt
 ```
 
-Outputs:
-
-- `data/processed/opportunity_map.csv`: ranked segment-level opportunity table
-- `data/processed/opportunity_summary.json`: run metadata and top-segment preview
-
-Main ranking features include:
-
-- women positive outcome rate by segment
-- predicted propensity for women in each segment
-- opportunity gap (`predicted_positive_rate - women_positive_rate`)
-- optional yearly trend slope when `--time-column` is provided
-
-## Rwanda Visibility Workflow (District or Sector)
-
-This workflow supports multi-table ingestion and can report at district level when sector data is unavailable.
-
-If you have one prepared table:
+3. Generate DHS women opportunity outputs
 
 ```bash
-python scripts/run_rwanda_visibility.py \
-   --data-path data/raw/your_dataset.csv \
-   --analysis-level sector \
-   --gender-column gender \
-   --province-column province \
-   --district-column district \
-   --sector-column sector
+python scripts/run_women_opportunity.py
 ```
 
-If you have multiple source tables:
-
-```bash
-python scripts/run_rwanda_visibility.py \
-   --tables-folder data/raw \
-   --join-keys household_id,person_id \
-   --base-table household_master \
-   --analysis-level sector \
-   --gender-column gender \
-   --province-column province \
-   --district-column district \
-   --sector-column sector
-```
-
-District-level example for Rwanda DHS Household Recode (`RWHR70FL.DTA`):
-
-```bash
-python scripts/run_rwanda_visibility.py \
-   --data-path data/raw/RWHR70FL.DTA \
-   --analysis-level district \
-   --gender-column hv219 \
-   --women-values female \
-   --province-column hv024 \
-   --district-column shdistrict \
-   --feature-columns hv025,hv009,hv010,hv011,hv201,hv205,hv206,hv207,hv208,hv209,hv210,hv211,hv212,hv221,hv243a,hv270,hv271
-```
-
-Outputs:
-
-- `data/processed/rwanda_sector_visibility.csv`: sector-level visibility and trust table
-- `data/processed/rwanda_sector_visibility_summary.json`: sector-level metadata and top rows
-- `data/processed/rwanda_district_visibility.csv`: district-level visibility and trust table
-- `data/processed/rwanda_district_visibility_summary.json`: district-level metadata and top rows
-
-Trust scoring in this workflow combines:
-
-- feature coverage ratio (weighted highest)
-- feature count trust against a minimum-feature threshold
-- sample trust based on women row volume in each location group
-
-## Expected Data Requirements
-
-The baseline script expects a CSV with:
-
-- one target column (binary or multiclass)
-- one gender column used for subgroup reporting
-- one or more segment columns used to define opportunity map groups
-- Rwanda administrative columns for visibility output (`province`, `district`, and optionally `sector`)
-- optional timestamp/date column to detect direction of trend over time
-- any number of additional feature columns
-
-## Dashboard Workflow
-
-Run the Streamlit dashboard with:
+4. Launch the dashboard
 
 ```bash
 streamlit run scripts/run_dashboard.py
 ```
 
-The dashboard now includes four views:
+## Dashboard Views
 
-- DHS opportunity view for district-level women opportunity targeting
-- CFSVA nutrition and food-security priority view
-- district one-click report for any of the 30 Rwanda districts
-- data donation merge view for local CSO CSV or XLSX uploads
+- DHS Opportunity View
+- CFSVA Nutrition and Food Security Priority View
+- District One-Click Report
+- Data Donation Merge
 
-Data donation expectations:
+## Data Sources Used
 
-- one district column that matches Rwanda district names, or close text labels such as `district_name`
-- one or more numeric survey indicators to aggregate by district
-- CSV and XLSX uploads are supported
-- uploaded data is merged into the current session baseline and can be pulled into the district one-click report
+- Rwanda DHS 2014-15 Household Recode: `data/raw/RWHR70FL.DTA`
+- Rwanda CFSVA 2015 Mother dataset: `data/raw/cfsva-2015-mother-DB- annex.sav`
+- Rwanda CFSVA 2015 Child dataset: `data/raw/cfsva-2015-child-DB- annex.sav`
+- Rwanda CFSVA 2015 Master dataset (supporting reference): `data/raw/cfsva-2015-master-DB- annex.sav`
+- Local CSO data donation uploads at runtime: CSV/XLSX files merged by district in the dashboard
+
+These inputs are transformed into district-level decision outputs under `data/processed`.
+
+## Core Outputs
+
+- `data/processed/women_opportunity_districts.csv`
+- `data/processed/women_opportunity_summary.json`
+- `data/processed/cfsva_2015_district_policy_risk.csv`
+- `data/processed/cfsva_2015_district_policy_risk_summary.json`
+
+## Repository Layout
+
+- `data/raw`: source datasets
+- `data/processed`: generated analytics outputs
+- `scripts`: runnable pipelines and dashboard entrypoints
+- `src/gsd`: reusable project code
+- `tests`: automated tests
 
 ## Notes
 
-- No dataset is included in this template.
-- Keep sensitive attributes and fairness requirements under explicit review before shipping models.
+- No datasets are committed in this repository.
+- Keep fairness, privacy, and responsible-use checks explicit before deployment.
