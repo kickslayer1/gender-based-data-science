@@ -15,6 +15,8 @@ OPPORTUNITY_SUMMARY_PATH = Path("data/processed/women_opportunity_summary.json")
 CFSVA_POLICY_SUMMARY_PATH = Path("data/processed/cfsva_2015_district_policy_risk_summary.json")
 LFS_DISTRICT_PATH = Path("data/processed/lfs_2022_women_district_labor.csv")
 LFS_DISTRICT_SUMMARY_PATH = Path("data/processed/lfs_2022_women_district_labor_summary.json")
+VULNERABILITY_PATH = Path("data/processed/district_vulnerability_index.csv")
+VULNERABILITY_SUMMARY_PATH = Path("data/processed/district_vulnerability_index_summary.json")
 
 UI_THEME = {
     "page_bg": "#f4efe6",
@@ -42,6 +44,9 @@ COMPONENT_COLORS = {
     "stunting_rate": "#0f766e",
     "underweight_rate": "#2563eb",
     "wasting_rate": "#64748b",
+    "economic_stress_index": "#b45309",
+    "nutrition_risk_index": "#be123c",
+    "labor_market_risk_index": "#0f766e",
 }
 METRIC_LABEL_OVERRIDES = {
     "opportunity_score": "DHS gender responsive budgeting score",
@@ -71,6 +76,16 @@ METRIC_LABEL_OVERRIDES = {
     "lfs_n_women_16_plus": "Women 16+ records (LFS)",
     "lfs_weighted_women_16_plus": "Women 16+ weighted sample (LFS)",
     "lfs_n_women_labor_rows": "Women labor-status rows (LFS)",
+    "vulnerability_index": "District vulnerability index",
+    "vulnerability_rank": "District vulnerability rank",
+    "vulnerability_tier": "Vulnerability tier",
+    "economic_stress_index": "Economic stress index (DHS)",
+    "nutrition_risk_index": "Nutrition risk index (CFSVA)",
+    "labor_market_risk_index": "Labor-market risk index (LFS)",
+    "available_domain_count": "Available domains",
+    "economic_metrics_available": "Economic metrics available",
+    "nutrition_metrics_available": "Nutrition metrics available",
+    "labor_metrics_available": "Labor metrics available",
 }
 COLUMN_LABEL_OVERRIDES = {
     "province_name": "Province",
@@ -83,6 +98,12 @@ COLUMN_LABEL_OVERRIDES = {
     "local_data_present": "Local data attached",
     "lfs_n_women_16_plus": "Women 16+ records (LFS)",
     "lfs_weighted_women_16_plus": "Women 16+ weighted sample (LFS)",
+    "vulnerability_rank": "Vulnerability rank",
+    "vulnerability_tier": "Vulnerability tier",
+    "vulnerability_index": "Vulnerability index",
+    "economic_stress_index": "Economic stress index (DHS)",
+    "nutrition_risk_index": "Nutrition risk index (CFSVA)",
+    "labor_market_risk_index": "Labor-market risk index (LFS)",
 }
 ACTION_THRESHOLDS = {
     "policy_priority_score": 0.35,
@@ -287,6 +308,56 @@ def _load_lfs_district_signals(path: str) -> pd.DataFrame:
 
     lfs = _collapse_lfs_rows_by_district(lfs)
     return lfs.sort_values(["province_name", "district_name"]).reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def _load_vulnerability_index(path: str) -> pd.DataFrame:
+    vulnerability = _load_data(path)
+    numeric_columns = [
+        "n_women_15_49",
+        "n_mothers",
+        "n_children",
+        "women_positive_rate",
+        "no_edu_rate",
+        "rural_share",
+        "fi_modsev_rate",
+        "poor_borderline_rate",
+        "stunting_rate",
+        "underweight_rate",
+        "wasting_rate",
+        "lfs_women_unemployment_rate",
+        "lfs_women_out_of_labor_force_rate",
+        "lfs_women_time_underemployment_rate",
+        "lfs_women_mean_monthly_cash_income",
+        "economic_stress_index",
+        "nutrition_risk_index",
+        "labor_market_risk_index",
+        "available_domain_count",
+        "economic_metrics_available",
+        "nutrition_metrics_available",
+        "labor_metrics_available",
+        "vulnerability_index",
+        "vulnerability_rank",
+    ]
+    numeric_columns.extend(
+        [column for column in vulnerability.columns if str(column).startswith("norm_")]
+    )
+    vulnerability = _coerce_numeric(vulnerability, numeric_columns)
+
+    if "district_name" in vulnerability.columns:
+        vulnerability["district_name"] = vulnerability["district_name"].apply(
+            lambda value: _normalize_district_value(value) or value
+        )
+
+    if "province_name" in vulnerability.columns:
+        normalized = vulnerability["province_name"].apply(_normalize_province_value)
+        vulnerability["province_name"] = normalized.fillna(
+            vulnerability["district_name"].astype(str).str.lower().map(DISTRICT_TO_PROVINCE)
+        )
+    else:
+        vulnerability["province_name"] = vulnerability["district_name"].astype(str).str.lower().map(DISTRICT_TO_PROVINCE)
+
+    return vulnerability.sort_values(["province_name", "district_name"]).reset_index(drop=True)
 
 
 def _collapse_lfs_rows_by_district(lfs_df: pd.DataFrame) -> pd.DataFrame:
@@ -670,11 +741,12 @@ def _render_app_header(
         unsafe_allow_html=True,
     )
 
-    top1, top2, top3, top4 = st.columns(4)
-    top1.metric("Districts covered", _format_whole_number(opportunity_summary.get("districts") or cfsva_summary.get("districts")))
-    top2.metric("Women 15-49 analyzed", _format_whole_number(opportunity_summary.get("women_15_49")))
-    top3.metric("Mother survey rows", _format_whole_number(cfsva_summary.get("mother_rows")))
-    top4.metric("Child survey rows", _format_whole_number(cfsva_summary.get("child_rows")))
+    if active_view == "DHS Gender Responsive Budgeting View":
+        top1, top2, top3, top4 = st.columns(4)
+        top1.metric("Districts covered", _format_whole_number(opportunity_summary.get("districts") or cfsva_summary.get("districts")))
+        top2.metric("Women 15-49 analyzed", _format_whole_number(opportunity_summary.get("women_15_49")))
+        top3.metric("Mother survey rows", _format_whole_number(cfsva_summary.get("mother_rows")))
+        top4.metric("Child survey rows", _format_whole_number(cfsva_summary.get("child_rows")))
 
 
 def _clamp_to_unit_interval(value: float) -> float:
@@ -840,6 +912,7 @@ def _sidebar_navigation() -> str:
             options=[
                 "DHS Gender Responsive Budgeting View",
                 "LFS Women Labor View",
+                "District Vulnerability Index View",
                 "CFSVA Nutrition & Food Security Priority View",
                 "District One-Click Report",
                 "Data Donation Merge",
@@ -1029,6 +1102,76 @@ def _sidebar_lfs_filters(lfs_df: pd.DataFrame) -> dict[str, object]:
         "min_records": min_records,
         "sort_metric": lfs_sort,
         "top_n": lfs_top_n,
+    }
+
+
+def _sidebar_vulnerability_filters(vulnerability_df: pd.DataFrame) -> dict[str, object]:
+    with st.sidebar:
+        st.markdown("---")
+        st.subheader("Vulnerability Filters")
+
+        all_provinces = sorted(vulnerability_df["province_name"].dropna().astype(str).unique().tolist())
+        _prepare_all_filter_state("vuln_provinces", all_provinces)
+        selected_provinces_raw = st.multiselect(
+            "Province",
+            options=_with_all_filter_option(all_provinces),
+            default=[ALL_FILTER_OPTION],
+            key="vuln_provinces",
+        )
+        selected_provinces = _resolve_all_filter_selection(selected_provinces_raw, all_provinces)
+
+        district_source = vulnerability_df.copy()
+        if selected_provinces:
+            district_source = district_source[district_source["province_name"].isin(selected_provinces)]
+        all_districts = sorted(district_source["district_name"].dropna().astype(str).unique().tolist())
+        _prepare_all_filter_state("vuln_districts", all_districts)
+        selected_districts_raw = st.multiselect(
+            "District",
+            options=_with_all_filter_option(all_districts),
+            default=[ALL_FILTER_OPTION],
+            key="vuln_districts",
+        )
+        selected_districts = _resolve_all_filter_selection(selected_districts_raw, all_districts)
+
+        tier_options = sorted(vulnerability_df["vulnerability_tier"].dropna().astype(str).unique().tolist())
+        _prepare_all_filter_state("vuln_tiers", tier_options)
+        selected_tiers_raw = st.multiselect(
+            "Vulnerability tier",
+            options=_with_all_filter_option(tier_options),
+            default=[ALL_FILTER_OPTION],
+            key="vuln_tiers",
+        )
+        selected_tiers = _resolve_all_filter_selection(selected_tiers_raw, tier_options)
+
+        max_women = int(vulnerability_df["n_women_15_49"].fillna(0).max()) if "n_women_15_49" in vulnerability_df.columns else 0
+        min_women = st.slider(
+            "Min women 15-49 sample",
+            min_value=0,
+            max_value=max(max_women, 1),
+            value=0,
+            key="vuln_min_women",
+        )
+
+        vuln_sort = st.selectbox(
+            "Sort metric",
+            options=[
+                "vulnerability_index",
+                "economic_stress_index",
+                "nutrition_risk_index",
+                "labor_market_risk_index",
+            ],
+            index=0,
+            key="vuln_sort",
+        )
+        vuln_top_n = st.slider("Top districts", min_value=5, max_value=30, value=15, key="vuln_top_n")
+
+    return {
+        "provinces": selected_provinces,
+        "districts": selected_districts,
+        "tiers": selected_tiers,
+        "min_women": min_women,
+        "sort_metric": vuln_sort,
+        "top_n": vuln_top_n,
     }
 
 
@@ -1601,6 +1744,201 @@ def _render_lfs_dashboard(lfs_df: pd.DataFrame, filters: dict[str, object]) -> N
         label="Download LFS district labor CSV",
         data=filtered.to_csv(index=False).encode("utf-8"),
         file_name="lfs_2022_women_district_labor_filtered.csv",
+        mime="text/csv",
+    )
+
+
+def _render_vulnerability_dashboard(
+    vulnerability_df: pd.DataFrame,
+    filters: dict[str, object],
+    summary: dict[str, object],
+) -> None:
+    st.caption(
+        "Composite district vulnerability index built from DHS economic stress, "
+        "CFSVA nutrition risk, and LFS labor-market risk domains."
+    )
+
+    filtered = vulnerability_df.copy()
+    provinces = filters["provinces"]
+    if provinces:
+        filtered = filtered[filtered["province_name"].isin(provinces)]
+    districts = filters["districts"]
+    if districts:
+        filtered = filtered[filtered["district_name"].isin(districts)]
+    tiers = filters["tiers"]
+    if tiers and "vulnerability_tier" in filtered.columns:
+        filtered = filtered[filtered["vulnerability_tier"].isin(tiers)]
+    if "n_women_15_49" in filtered.columns:
+        filtered = filtered[filtered["n_women_15_49"].fillna(0) >= int(filters["min_women"])]
+
+    filtered = filtered[filtered["vulnerability_index"].notna()].copy()
+    if filtered.empty:
+        st.warning("No districts match current vulnerability filters.")
+        return
+
+    filtered = filtered.sort_values("vulnerability_index", ascending=False).reset_index(drop=True)
+    very_high_count = int((filtered["vulnerability_tier"] == "Very High").sum()) if "vulnerability_tier" in filtered.columns else 0
+    top_district = str(filtered.iloc[0]["district_name"]) if not filtered.empty else "n/a"
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Districts", f"{len(filtered)}")
+    k2.metric("Avg vulnerability index", f"{filtered['vulnerability_index'].mean(skipna=True):.3f}")
+    k3.metric("Very high vulnerability", f"{very_high_count}")
+    k4.metric("Highest-risk district", top_district)
+
+    sort_metric = str(filters["sort_metric"])
+    top_n = int(filters["top_n"])
+    ranked = filtered.sort_values(sort_metric, ascending=False).head(top_n).copy()
+    ranked["label"] = ranked["province_name"] + " | " + ranked["district_name"]
+
+    st.subheader(f"Top {len(ranked)} districts by {_metric_label(sort_metric)}")
+    _render_sorted_metric_bar_chart(
+        ranked,
+        label_column="label",
+        district_column="district_name",
+        province_column="province_name",
+        metric_column=sort_metric,
+    )
+
+    st.subheader("Nutrition risk vs labor-market risk")
+    st.caption("Dot size scales with the district vulnerability index.")
+    scatter_df = filtered[
+        [
+            "district_name",
+            "province_name",
+            "vulnerability_tier",
+            "nutrition_risk_index",
+            "labor_market_risk_index",
+            "economic_stress_index",
+            "vulnerability_index",
+        ]
+    ].dropna(subset=["nutrition_risk_index", "labor_market_risk_index", "vulnerability_index"])
+    if scatter_df.empty:
+        st.info("Not enough non-missing domain values to draw the risk scatter.")
+    else:
+        scatter_chart = (
+            alt.Chart(scatter_df)
+            .mark_circle(opacity=0.85)
+            .encode(
+                x=alt.X("nutrition_risk_index:Q", title="Nutrition risk index (CFSVA)"),
+                y=alt.Y("labor_market_risk_index:Q", title="Labor-market risk index (LFS)"),
+                color=alt.Color("province_name:N", title="Province", scale=_province_color_scale()),
+                size=alt.Size("vulnerability_index:Q", title="Vulnerability index", scale=alt.Scale(range=[80, 420])),
+                tooltip=[
+                    alt.Tooltip("district_name:N", title="District"),
+                    alt.Tooltip("province_name:N", title="Province"),
+                    alt.Tooltip("vulnerability_tier:N", title="Tier"),
+                    alt.Tooltip("economic_stress_index:Q", title="Economic stress", format=".3f"),
+                    alt.Tooltip("nutrition_risk_index:Q", title="Nutrition risk", format=".3f"),
+                    alt.Tooltip("labor_market_risk_index:Q", title="Labor risk", format=".3f"),
+                    alt.Tooltip("vulnerability_index:Q", title="Vulnerability index", format=".3f"),
+                ],
+            )
+            .properties(height=360)
+            .configure_view(strokeWidth=0)
+            .configure_axis(labelColor=UI_THEME["muted"], titleColor=UI_THEME["muted"], gridColor="#eadfce")
+            .configure_legend(labelColor=UI_THEME["muted"], titleColor=UI_THEME["text"], orient="bottom")
+        )
+        st.altair_chart(scatter_chart, width="stretch")
+
+    components = [
+        "economic_stress_index",
+        "nutrition_risk_index",
+        "labor_market_risk_index",
+    ]
+    component_ranked = ranked.dropna(subset=components, how="all").copy()
+    if not component_ranked.empty:
+        st.subheader("Domain profile for top districts")
+        _render_ranked_component_chart(
+            component_ranked,
+            label_column="label",
+            district_column="district_name",
+            components=components,
+        )
+
+    with st.expander("Index explanation and formula", expanded=False):
+        st.markdown(
+            "\n".join(
+                [
+                    "The district vulnerability index is built in three steps:",
+                    "1. Min-max normalize each input metric to a 0-1 risk scale.",
+                    "2. Compute domain indices as simple averages:",
+                    "   - Economic stress (DHS): poverty rate, no-education rate, rural share",
+                    "   - Nutrition risk (CFSVA): food insecurity, poor/borderline consumption, stunting, underweight, wasting",
+                    "   - Labor-market risk (LFS): unemployment, out-of-labor-force, underemployment, and inverse income",
+                    "3. Blend domains with policy weights:",
+                    "   - 0.40 Economic stress + 0.35 Nutrition risk + 0.25 Labor-market risk",
+                    "",
+                    "Higher index values indicate higher relative vulnerability compared with other districts in this run.",
+                ]
+            )
+        )
+
+        if summary:
+            weights = summary.get("domain_weights", {})
+            if weights:
+                st.caption(
+                    "Configured domain weights: "
+                    + ", ".join(f"{name}={value:.2f}" for name, value in weights.items())
+                )
+            top_list = summary.get("top_10_vulnerable_districts", [])
+            if top_list:
+                st.caption("Top 10 vulnerable districts from latest pipeline run: " + ", ".join(str(value) for value in top_list))
+
+    display_cols = [
+        "vulnerability_rank",
+        "vulnerability_tier",
+        "province_name",
+        "district_name",
+        "vulnerability_index",
+        "economic_stress_index",
+        "nutrition_risk_index",
+        "labor_market_risk_index",
+        "women_positive_rate",
+        "no_edu_rate",
+        "rural_share",
+        "fi_modsev_rate",
+        "poor_borderline_rate",
+        "stunting_rate",
+        "underweight_rate",
+        "wasting_rate",
+        "lfs_women_unemployment_rate",
+        "lfs_women_out_of_labor_force_rate",
+        "lfs_women_time_underemployment_rate",
+        "lfs_women_mean_monthly_cash_income",
+    ]
+    available_cols = [column for column in display_cols if column in filtered.columns]
+    st.subheader("District vulnerability table")
+    st.dataframe(
+        filtered[available_cols].rename(columns={column: _column_label(column) for column in available_cols}),
+        width="stretch",
+        hide_index=True,
+    )
+
+    map_ready_cols = [
+        "province_name",
+        "district_name",
+        "vulnerability_rank",
+        "vulnerability_tier",
+        "vulnerability_index",
+        "economic_stress_index",
+        "nutrition_risk_index",
+        "labor_market_risk_index",
+    ]
+    available_map_cols = [column for column in map_ready_cols if column in filtered.columns]
+    map_ready = filtered[available_map_cols].copy()
+
+    d1, d2 = st.columns(2)
+    d1.download_button(
+        label="Download vulnerability map-ready CSV",
+        data=map_ready.to_csv(index=False).encode("utf-8"),
+        file_name="district_vulnerability_map_ready.csv",
+        mime="text/csv",
+    )
+    d2.download_button(
+        label="Download full vulnerability index CSV",
+        data=filtered.to_csv(index=False).encode("utf-8"),
+        file_name="district_vulnerability_index_filtered.csv",
         mime="text/csv",
     )
 
@@ -2179,6 +2517,28 @@ def main() -> None:
                 )
             filters = _sidebar_lfs_filters(lfs_df)
             _render_lfs_dashboard(lfs_df, filters)
+        return
+
+    if active_view == "District Vulnerability Index View":
+        st.subheader("District vulnerability index (DHS + CFSVA + LFS)")
+        if not VULNERABILITY_PATH.exists():
+            st.error(
+                "No district vulnerability index file found. "
+                "Run scripts/run_district_vulnerability_index.py first."
+            )
+        else:
+            vulnerability_df = _load_vulnerability_index(str(VULNERABILITY_PATH))
+            vulnerability_summary = (
+                _load_json_summary(str(VULNERABILITY_SUMMARY_PATH)) if VULNERABILITY_SUMMARY_PATH.exists() else {}
+            )
+            if vulnerability_summary:
+                st.caption(
+                    "Latest pipeline output: "
+                    f"{_format_whole_number(vulnerability_summary.get('rows_ranked'))} ranked districts, "
+                    f"average index {_format_metric_value('vulnerability_index', vulnerability_summary.get('avg_vulnerability_index'))}."
+                )
+            filters = _sidebar_vulnerability_filters(vulnerability_df)
+            _render_vulnerability_dashboard(vulnerability_df, filters, vulnerability_summary)
         return
 
     if active_view == "CFSVA Nutrition & Food Security Priority View":
