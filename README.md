@@ -1,5 +1,9 @@
 # Rwanda Gender Data Visibility Intelligence Platform
 
+Group members:
+1. Olivier HABIMANA
+2. Narcisse TUYIZERE
+
 District-level data visibility intelligence for women-centered policy action in Rwanda.
 
 This project helps civil society organizations and policy teams answer one core question: **where should we act first, and why?**
