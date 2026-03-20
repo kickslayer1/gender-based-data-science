@@ -85,16 +85,26 @@ The LFS Women Labor View presents district-level women employment, unemployment,
 labor-force participation, time underemployment, and income signals from the
 2022 labour-force survey.
 
+## How To Read The Metrics
+
+- `DHS gender responsive budgeting score`: a district priority index built from the DHS women-poverty model. Current formula: `0.50 * predicted poverty rate + 0.30 * max(predicted - actual, 0) + 0.15 * women share + 0.05 * trend`. In this run, women share is constant and trend is zero, so the score behaves mainly like a poverty-priority signal. Significance: use it to rank districts relative to each other, not as a percent grade.
+- `CFSVA gender responsive budgeting score`: a district composite built from food insecurity and child nutrition burden, including moderate/severe food insecurity, poor/borderline consumption, stunting, underweight, and wasting. Significance: higher values indicate heavier nutrition and food-security stress relative to other districts.
+- `Women labor risk score (LFS)`: a weighted labor-market risk index: `0.40 * unemployment + 0.30 * out of labor force + 0.20 * time underemployment + 0.10 * inverse income`, after min-max normalization. Significance: higher values indicate weaker women labor-market conditions.
+- `District vulnerability index`: a blended cross-source index: `0.40 * economic stress + 0.35 * nutrition risk + 0.25 * labor-market risk`. Significance: higher values indicate stronger multi-dimensional vulnerability and should be read as a district targeting rank.
+- All composite scores in this project are relative indices. They are mainly for comparison, ranking, and triage across districts, so they are not expected to behave like 0-100 performance scores.
+
 ## Data Sources Used
 
 - Rwanda DHS 2014-15 Household Recode: `data/raw/RWHR70FL.DTA`
 - Rwanda Labour Force Survey 2022 individual file: `data/raw/RW_LFS2022.dta`
+- Rwanda Labour Force Survey Gender Thematic Report 2024: `data/raw/LABOUR_FORCE_SURVEY_Gender_Thematic_Report_2024.pdf`
+- Rwanda National Gender Statistics Report: `data/raw/National Gender Statistics Report.pdf`
 - Rwanda CFSVA 2015 Mother dataset: `data/raw/cfsva-2015-mother-DB- annex.sav`
 - Rwanda CFSVA 2015 Child dataset: `data/raw/cfsva-2015-child-DB- annex.sav`
 - Rwanda CFSVA 2015 Master dataset (supporting reference): `data/raw/cfsva-2015-master-DB- annex.sav`
 - Local CSO data donation uploads at runtime: CSV/XLSX files merged by district in the dashboard
 
-These inputs are transformed into district-level decision outputs under `data/processed`.
+These inputs are transformed into district-level decision outputs under `data/processed`, including DHS, CFSVA, LFS, and the blended district vulnerability index outputs.
 
 ## Core Outputs
 
