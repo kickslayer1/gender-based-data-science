@@ -1,6 +1,6 @@
-# Rwanda Women Policy Intelligence
+# Rwanda Gender Data Visibility Intelligence Platform
 
-District-level data science for women-centered policy action in Rwanda.
+District-level data visibility intelligence for women-centered policy action in Rwanda.
 
 This project helps civil society organizations and policy teams answer one core question: **where should we act first, and why?**
 
@@ -13,14 +13,14 @@ This project helps civil society organizations and policy teams answer one core 
 
 ## What You Get
 
-### 1. DHS Opportunity Mapping
+### 1. DHS Gender Responsive Budgeting Mapping
 
-- Builds a district opportunity ranking for women aged 15-49
+- Builds a district gender responsive budgeting ranking for women aged 15-49
 - Captures poverty pressure, education gaps, and rural exposure
 
 ### 2. CFSVA Nutrition and Food Security Prioritization
 
-- Produces district policy-priority scores from mother and child indicators
+- Produces district gender responsive budgeting scores from mother and child indicators
 - Highlights hotspots for nutrition and food-security intervention
 
 ### 3. One-Click District Briefs
@@ -43,13 +43,19 @@ This project helps civil society organizations and policy teams answer one core 
 pip install -r requirements.txt
 ```
 
-3. Generate DHS women opportunity outputs
+3. Generate DHS gender responsive budgeting outputs
 
 ```bash
 python scripts/run_women_opportunity.py
 ```
 
-4. Launch the dashboard
+4. Generate LFS 2022 women labor district outputs
+
+```bash
+python scripts/run_lfs_district_analytics.py
+```
+
+5. Launch the dashboard
 
 ```bash
 streamlit run scripts/run_dashboard.py
@@ -57,14 +63,20 @@ streamlit run scripts/run_dashboard.py
 
 ## Dashboard Views
 
-- DHS Opportunity View
+- DHS Gender Responsive Budgeting View
+- LFS Women Labor View
 - CFSVA Nutrition and Food Security Priority View
 - District One-Click Report
 - Data Donation Merge
 
+The LFS Women Labor View presents district-level women employment, unemployment,
+labor-force participation, time underemployment, and income signals from the
+2022 labour-force survey.
+
 ## Data Sources Used
 
 - Rwanda DHS 2014-15 Household Recode: `data/raw/RWHR70FL.DTA`
+- Rwanda Labour Force Survey 2022 individual file: `data/raw/RW_LFS2022.dta`
 - Rwanda CFSVA 2015 Mother dataset: `data/raw/cfsva-2015-mother-DB- annex.sav`
 - Rwanda CFSVA 2015 Child dataset: `data/raw/cfsva-2015-child-DB- annex.sav`
 - Rwanda CFSVA 2015 Master dataset (supporting reference): `data/raw/cfsva-2015-master-DB- annex.sav`
@@ -76,6 +88,8 @@ These inputs are transformed into district-level decision outputs under `data/pr
 
 - `data/processed/women_opportunity_districts.csv`
 - `data/processed/women_opportunity_summary.json`
+- `data/processed/lfs_2022_women_district_labor.csv`
+- `data/processed/lfs_2022_women_district_labor_summary.json`
 - `data/processed/cfsva_2015_district_policy_risk.csv`
 - `data/processed/cfsva_2015_district_policy_risk_summary.json`
 
